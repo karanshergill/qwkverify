@@ -1,0 +1,44 @@
+{
+  "name": "verify-web-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --import ./register-loader.js server.js",
+    "dev": "nodemon --import ./register-loader.js server.js",
+    "dev:prisma": " npx prisma db pull && npx prisma generate && npm run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.13.0",
+    "axios": "^1.9.0",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "firebase-admin": "^13.4.0",
+    "joi": "^17.13.3",
+    "json2csv": "^6.0.0-alpha.2",
+    "jsonwebtoken": "^9.0.2",
+    "libphonenumber-js": "^1.12.8",
+    "module-alias": "^2.2.3",
+    "multer": "^2.0.2",
+    "nodemon": "^3.1.10",
+    "pino": "^9.7.0",
+    "pino-http": "^10.5.0",
+    "pino-pretty": "^13.0.0",
+    "redis": "^5.5.5",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "prisma": "^6.13.0",
+    "prisma-docs-generator": "^0.8.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
