@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 export const verifyLoginSchema = Joi.object({
-    username: Joi.string()
+    userName: Joi.string()
         .required()
         .messages({
             'any.required': 'User Name is Required.',
