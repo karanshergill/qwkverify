@@ -3,7 +3,7 @@ import { verifyToken } from "@shared/middlewares/auth.middleware.js";
 import { asyncHandler } from "@shared/helpers/asyncHandler.js";
 import { payloadCheck } from "@shared/helpers/commonHandler.js";
 import { upload, handleMulterError } from "@shared/config/multer.js";
-import { generateUniqueCodeFile, uploadCouponCodeFile, getCouponCodeList, downloadCouponCodeFile } from "./coupon.controller.js";;
+import { generateUniqueCodeFile, uploadCouponCodeFile, getCouponCodeList, downloadCouponCodeFile } from "./coupon.controller.js";
 
 const router = express.Router();
 

@@ -13,11 +13,11 @@ export const generateToken = async (data) => {
 };
 
 export const verifyLogin = async (req, res, next) => {
-  const { username, password } = req.body;
+  const { userName, password } = req.body;
 
   try {
     // Validate required fields
-    if (!username || !password) {
+    if (!userName || !password) {
       return res.status(400).json({
         success: false,
         message: "Username and password are required",
@@ -26,7 +26,7 @@ export const verifyLogin = async (req, res, next) => {
 
     // Find user by username, email, or mobile
     const user = await prisma.userInfo.findFirst({ 
-      where: { userName: username, password: password, del: 0 },
+      where: { userName: userName, password: password, del: 0 },
     });
 
     if (!user) {
@@ -60,7 +60,7 @@ export const verifyLogin = async (req, res, next) => {
       user: {
         id: user.id,
         name: user.name,
-        username: user.userName,
+        userName: user.userName,
         email: user.email,
         mobile: user.mobile,
         status: user.status
@@ -82,7 +82,7 @@ export const getUserDetail = async (req, res, next) => {
       select: {
         id: true,
         name: true,
-        username: true,
+        userName: true,
         email: true,
         mobile: true,
         password: true,
