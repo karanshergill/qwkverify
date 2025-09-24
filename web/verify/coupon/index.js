@@ -270,6 +270,46 @@ export async function couponCodeList(query) {
   };
 }
 
+export async function couponCounts() {
+  try {
+    const totalCoupons = await prisma.couponInfo.count();
+
+    const totalVerified = await prisma.couponInfo.count({
+      where: {
+        verifiedFlag: 1
+      }
+    });
+
+    const totalNotVerified = await prisma.couponInfo.count({
+      where: {
+        verifiedFlag: 0
+      }
+    });
+
+    const stats = {
+      totalGenerated: totalCoupons,
+      totalVerified: totalVerified,
+      totalNotVerified: totalNotVerified,
+    };
+
+    return {
+      statusCode: 200,
+      success: true,
+      message: "Coupon statistics retrieved successfully",
+      result: stats
+    };
+
+  } catch (error) {
+    console.error("Error fetching coupon statistics:", error);
+    return {
+      statusCode: 500,
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    };
+  }
+}
+
 function toCSV(rows, headers) {
   const csvRows = [];
   csvRows.push(headers.join(",")); // header row

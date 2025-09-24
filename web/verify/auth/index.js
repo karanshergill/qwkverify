@@ -18,7 +18,7 @@ export const verifyLogin = async (req, res, next) => {
   try {
     // Validate required fields
     if (!userName || !password) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: "Username and password are required",
       });
@@ -30,7 +30,7 @@ export const verifyLogin = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(401).json({
+      return res.status(200).json({
         success: false,
         message: "Invalid username or password",
       });
