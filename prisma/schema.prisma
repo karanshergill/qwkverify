@@ -15,6 +15,7 @@ model couponInfo {
   verifiedFlag       Int?      @default(0) @db.SmallInt
   verifiedOn         DateTime? @db.Timestamp(6)
   del                Int?      @default(0) @db.SmallInt
+  location           String?   @db.VarChar(255)
 }
 
 model userInfo {

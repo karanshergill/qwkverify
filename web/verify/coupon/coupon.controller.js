@@ -1,5 +1,5 @@
 import fs from "fs";
-import { generateUniqueCodeUploadFile, couponCodeUploadFile, couponCodeList, downloadCouponCodeCSV } from "./index.js";
+import { generateUniqueCodeUploadFile, couponCodeUploadFile, couponCodeList, downloadCouponCodeCSV, couponCounts } from "./index.js";
 
 export const generateUniqueCodeFile = async (req, res) => {
   const filePath = await generateUniqueCodeUploadFile();
@@ -39,6 +39,11 @@ export const uploadCouponCodeFile = async (req, res) => {
 export const getCouponCodeList = async (req, res) => {
   const query = req.body.pagelimit ? req.body : req.query;
   const result = await couponCodeList(query);
+  return res.status(result.statusCode).json(result);
+};
+
+export const getCouponCounts = async (req, res) => {
+  const result = await couponCounts();
   return res.status(result.statusCode).json(result);
 };
 
