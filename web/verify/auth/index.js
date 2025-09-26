@@ -73,6 +73,65 @@ export const verifyLogin = async (req, res, next) => {
   }
 };
 
+export const updateLoginCreds = async (req, res, next) => {
+  const { newUserName, newPassword } = req.body;
+  const { id } = req.user;
+
+  try {
+    if (!newUserName || !newPassword) {
+      return res.status(200).json({
+        success: false,
+        message: "userId, newUserName and newPassword are required",
+      });
+    }
+
+    const user = await prisma.userInfo.findFirst({ where: { id: id } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const existingUser = await prisma.userInfo.findFirst({
+      where: {
+        userName: newUserName,
+        NOT: { id: id },
+      },
+    });
+    if (existingUser) {
+      return res.status(200).json({
+        success: false,
+        message: "Username already taken",
+      });
+    }
+
+    const updatedUser = await prisma.userInfo.update({
+      where: { id: id },
+      data: {
+        userName: newUserName,
+        password: newPassword,
+        updatedAt: new Date(),
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Login credentials updated successfully",
+      user: {
+        id: updatedUser.id,
+        userName: updatedUser.userName,
+        email: updatedUser.email,
+        mobile: updatedUser.mobile,
+      },
+    });
+
+  } catch (error) {
+    console.error("Update credentials error:", error);
+    next(error);
+  }
+};
+
 export const getUserDetail = async (req, res, next) => {
   const { id } = req.user;
 

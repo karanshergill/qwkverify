@@ -1,6 +1,7 @@
 import { prisma } from "@shared/config/database.js";
 import fs from "fs";
 import path from "path";
+import geoip from "geoip-lite";
 import csvParser from "csv-parser";
 import dotenv from "dotenv";
 dotenv.config();
@@ -9,23 +10,20 @@ dotenv.config();
 const MAX_ROWS = 10000;
 const MAX_CODE_LENGTH = 50;
 const ALLOWED_CODE_PATTERN = /^[a-zA-Z0-9\-_]+$/;
-const REQUIRED_HEADER = "Unique Code (*)";
+const REQUIRED_HEADER = `Unique Code(*)`;
 
 export async function generateUniqueCodeUploadFile() {
   const uploadDir = path.join(process.cwd(), "uploads", "sample");
-
+  console.log('uploadDir',uploadDir);
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
-  const timestamp = Date.now();
-  const filePath = path.join(
-    uploadDir,
-    `Unique_Code_Upload_Template_${timestamp}.csv`
-  );
-
+  const filePath = path.join(uploadDir, "Unique_Code_Upload_Template.csv");
+  console.log('filePath',filePath)
   const csvContent = `${REQUIRED_HEADER}\n`;
-  fs.writeFileSync(filePath, csvContent, "utf8");
+
+  fs.writeFileSync(filePath, csvContent, `utf-8`);
 
   return filePath;
 }
@@ -40,7 +38,7 @@ export async function couponCodeUploadFile(filePath) {
 
     if (!fs.existsSync(filePath)) {
       resolve({
-        statusCode: 400,
+        statusCode: 200,
         success: false,
         message: "File not found",
         response: [],
@@ -115,7 +113,7 @@ export async function couponCodeUploadFile(filePath) {
 
         if (results.length === 0) {
           resolve({
-            statusCode: 400,
+            statusCode: 200,
             success: false,
             message: "No valid unique codes found",
             response: [],
@@ -125,13 +123,12 @@ export async function couponCodeUploadFile(filePath) {
 
         try {
           const dynamicLink = await prisma.dynamicLinkInfo.findFirst({
-            where: { del: 0 },
             select: { couponLink: true },
           });
 
           if (!dynamicLink?.couponLink) {
             resolve({
-              statusCode: 500,
+              statusCode: 200,
               success: false,
               message: "Coupon link config not found",
               response: [],
@@ -152,8 +149,7 @@ export async function couponCodeUploadFile(filePath) {
             const insertData = newCodes.map((code) => ({
               uniqueCode: code,
               linkUniqueCouponCc: dynamicLink.couponLink + code,
-              createdAt: new Date(),
-              updatedAt: new Date(),
+              dateCreated: new Date(),
             }));
 
             const result = await prisma.couponInfo.createMany({
@@ -216,49 +212,47 @@ export async function couponCodeUploadFile(filePath) {
 export async function couponCodeList(query) {
   const { pagelimit, start, page, verifiedFlag, filter } = query;
 
-  const limit = pagelimit ? parseInt(pagelimit) : 500;
-  const offset = start ? parseInt(start) : 0;
-  const currentPage = page ? parseInt(page) : 1;
+  const limit = parseInt(pagelimit) || 500;
+  const offset = parseInt(start) || 0;
+  const currentPage = parseInt(page) || 1;
   const calculatedOffset = start ? offset : (currentPage - 1) * limit;
 
   const whereCondition = {};
+
   if (verifiedFlag !== undefined) {
-    whereCondition.verifiedFlag = parseInt(verifiedFlag);
+    whereCondition.verifiedFlag = verifiedFlag;
   }
-  if (filter?.date_created) {
-    whereCondition.dateCreated = {
-      contains: filter.date_created,
-      mode: "insensitive",
-    };
+
+  if (filter) {
+    if (typeof filter === "object" && filter.date_created) {
+      const date = new Date(filter.date_created);
+      whereCondition.dateCreated = {
+        gte: date,
+        lt: new Date(date.getTime() + 24 * 60 * 60 * 1000),
+      };
+    } else if (typeof filter === "string" && filter.trim() !== "" && filter.toLowerCase() !== "search") {
+      whereCondition.uniqueCode = {
+        contains: filter,
+        mode: "insensitive",
+      };
+    }
   }
 
   const queryOptions = {
     where: whereCondition,
-    select: { id: true, dateCreated: true, uniqueCode: true, linkUniqueCouponCc: true },
+    select: { id: true, dateCreated: true, uniqueCode: true, linkUniqueCouponCc: true, location: true, verifiedOn: true },
     orderBy: { id: "desc" },
+    skip: calculatedOffset,
+    take: limit,
   };
-
-  if (pagelimit && parseInt(pagelimit) !== 0) {
-    queryOptions.skip = calculatedOffset;
-    queryOptions.take = limit;
-  }
 
   const result = await prisma.couponInfo.findMany(queryOptions);
 
   let pagination = null;
-  if (pagelimit && parseInt(pagelimit) !== 0) {
+  if (limit !== 0) {
     const totalRecords = await prisma.couponInfo.count({ where: whereCondition });
     const totalPages = Math.ceil(totalRecords / limit);
-    pagination = {
-      currentPage,
-      totalPages,
-      totalRecords,
-      recordsPerPage: limit,
-      hasNextPage: currentPage < totalPages,
-      hasPrevPage: currentPage > 1,
-      startRecord: calculatedOffset + 1,
-      endRecord: Math.min(calculatedOffset + limit, totalRecords),
-    };
+    pagination = { currentPage, totalPages, totalRecords, recordsPerPage: limit, hasNextPage: currentPage < totalPages, hasPrevPage: currentPage > 1, startRecord: calculatedOffset + 1, endRecord: Math.min(calculatedOffset + limit, totalRecords) };
   }
 
   return {
@@ -366,7 +360,6 @@ export async function downloadCouponCodeCSV(filter = {}) {
     return null;
   }
 
-  // Add Sr No + format verifiedFlag
   const dataWithSr = rows.map((row, idx) => ({
     "Sr No": idx + 1,
     "Date Created": row.dateCreated,
@@ -379,14 +372,80 @@ export async function downloadCouponCodeCSV(filter = {}) {
   const headers = Object.keys(dataWithSr[0]);
   const csvContent = toCSV(dataWithSr, headers);
 
-  // Save file temporarily
   const uploadDir = path.join(process.cwd(), "uploads", "Download_excel");
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
-  const filePath = path.join(uploadDir, `couponMaster_${Date.now()}.csv`);
+  // File will replace old file
+  const filePath = path.join(uploadDir, `couponMaster_export.csv`);
+  
+  // This will overwrite existing file automatically
   fs.writeFileSync(filePath, csvContent, "utf8");
 
   return filePath;
+}
+
+export async function productVerify(query, req) {
+  try {
+    const couponCode = query?.couponCode;
+
+    if (!couponCode) {
+      return {
+        statusCode: 400,
+        success: false,
+        message: "couponCode is required"
+      };
+    }
+
+   let ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+
+    if (ip?.startsWith("::ffff:")) {
+      ip = ip.split("::ffff:")[1];
+    }
+
+    // Check if IP is private
+    const isPrivate = ip.startsWith("10.") || ip.startsWith("192.168.") || ip.startsWith("172.16.");
+
+    const geo = !isPrivate ? geoip.lookup(ip) : null;
+    const location = geo ? `${geo.city}, ${geo.country}` : isPrivate ? "Local Network" : "Unknown";
+
+    const coupon = await prisma.couponInfo.findFirst({
+      where: { uniqueCode: couponCode },
+      select: { id: true }
+    });
+
+    if (!coupon) {
+      return {
+        statusCode: 200,
+        success: false,
+        message: "Verification Code Not Found"
+      };
+    }
+
+    const updated = await prisma.couponInfo.update({
+      where: { id: coupon.id },
+      data: {
+        verifiedFlag: 1,
+        verifiedOn: new Date(),
+        location
+      }
+    });
+
+    return {
+      statusCode: 200,
+      success: true,
+      message: "Coupon Verified Successfully",
+      result: updated
+    };
+
+  } catch (error) {
+    console.error("Error verifying coupon:", error);
+    return {
+      statusCode: 500,
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    };
+  }
 }
