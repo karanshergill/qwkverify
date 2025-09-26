@@ -3,11 +3,11 @@ import { verifyToken } from "@shared/middlewares/auth.middleware.js";
 import { asyncHandler } from "@shared/helpers/asyncHandler.js";
 import { payloadCheck } from "@shared/helpers/commonHandler.js";
 import { upload, handleMulterError } from "@shared/config/multer.js";
-import { generateUniqueCodeFile, uploadCouponCodeFile, getCouponCodeList, downloadCouponCodeFile, getCouponCounts } from "./coupon.controller.js";
+import { generateUniqueCodeFile, uploadCouponCodeFile, getCouponCodeList, downloadCouponCodeFile, getCouponCounts, getProductVerify } from "./coupon.controller.js";
 
 const router = express.Router();
 
-router.get(
+router.post(
   "/generateUniqueCodeUploadFile",
   verifyToken,
   asyncHandler(generateUniqueCodeFile)
@@ -18,7 +18,6 @@ router.post(
   verifyToken,
   upload.single("category"),
   handleMulterError,
-  payloadCheck(uploadCouponCodeFile),
   asyncHandler(uploadCouponCodeFile)
 );
 
@@ -40,6 +39,13 @@ router.post(
   verifyToken,
   payloadCheck(downloadCouponCodeFile),
   asyncHandler(downloadCouponCodeFile)
+);
+
+router.post(
+  "/productVerify",
+  verifyToken,
+  payloadCheck(getProductVerify),
+  asyncHandler(getProductVerify)
 );
 
 export default router;

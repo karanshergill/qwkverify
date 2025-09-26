@@ -1,20 +1,38 @@
 import fs from "fs";
-import { generateUniqueCodeUploadFile, couponCodeUploadFile, couponCodeList, downloadCouponCodeCSV, couponCounts } from "./index.js";
+import path from "path"; 
+import { generateUniqueCodeUploadFile, couponCodeUploadFile, couponCodeList, downloadCouponCodeCSV, couponCounts, productVerify } from "./index.js";
 
 export const generateUniqueCodeFile = async (req, res) => {
-  const filePath = await generateUniqueCodeUploadFile();
-  if (!fs.existsSync(filePath)) {
-    return res.status(500).json({ success: false, message: "Failed to generate template file" });
-  }
-
-  res.download(filePath, "Unique Code Upload.csv", (err) => {
-    if (err) console.error("Download error:", err);
-    try {
-      fs.unlinkSync(filePath);
-    } catch (e) {
-      console.error("Failed to cleanup file:", e);
+  try {
+    const filePath = await generateUniqueCodeUploadFile();
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(500).json({ 
+        success: false, 
+        message: "Failed to generate template file" 
+      });
     }
-  });
+
+    // Read file content for preview
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    
+    // Get file stats
+    const fileName = path.basename(filePath);
+
+    // Return preview data
+    res.status(200).json({
+      success: true,
+      message: "Sample File Generated Successfully",
+      fileName: `uploads/sample/${fileName}`,
+    });
+
+  } catch (err) {
+    console.error("generateUniqueCodeFile error:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error" 
+    });
+  }
 };
 
 export const uploadCouponCodeFile = async (req, res) => {
@@ -37,9 +55,21 @@ export const uploadCouponCodeFile = async (req, res) => {
 };
 
 export const getCouponCodeList = async (req, res) => {
-  const query = req.body.pagelimit ? req.body : req.query;
-  const result = await couponCodeList(query);
-  return res.status(result.statusCode).json(result);
+  try {
+    const query = { ...req.query, ...req.body };
+
+    const pagelimit = query.pagelimit || query.pageLimit || 10;
+    const start = query.start ? parseInt(query.start) : 0;
+    const page = query.page ? parseInt(query.page) : 1;
+    const verifiedFlag = query.verifiedFlag !== undefined ? parseInt(query.verifiedFlag) : undefined;
+    const filter = query.filter || {};
+
+    const result = await couponCodeList({ pagelimit, start, page, verifiedFlag, filter });
+    return res.status(result.statusCode).json(result);
+  } catch (err) {
+    console.error("getCouponCodeList error:", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
 };
 
 export const getCouponCounts = async (req, res) => {
@@ -59,13 +89,16 @@ export const downloadCouponCodeFile = async (req, res) => {
       });
     }
 
-    res.download(filePath, "couponMaster.csv", (err) => {
-      if (err) console.error("Download error:", err);
-      try {
-        fs.unlinkSync(filePath); // cleanup after download
-      } catch (cleanupError) {
-        console.error("Failed to cleanup file:", cleanupError);
-      }
+    // Read file content for preview
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    
+    // Get file stats
+    const fileName = path.basename(filePath);
+
+    return res.status(200).json({
+      success: true,
+      message: "Downloaded Successfully",
+      fileName: `uploads/Download_excel/${fileName}`,
     });
   } catch (error) {
     console.error("Error in downloadCouponCodeFile:", error);
@@ -75,4 +108,10 @@ export const downloadCouponCodeFile = async (req, res) => {
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
+};
+
+export const getProductVerify = async (req, res) => {
+  const query = req.body;
+  const result = await productVerify(query, req);
+  return res.status(result.statusCode).json(result);
 };

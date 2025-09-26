@@ -10,7 +10,7 @@ datasource db {
 model couponInfo {
   id                 Int       @id @default(autoincrement())
   dateCreated        DateTime? @db.Timestamp(6)
-  uniqueCode         String?   @db.VarChar(21)
+  uniqueCode         String?   @unique(map: "unique_uniquecode") @db.VarChar(21)
   linkUniqueCouponCc String?   @db.VarChar(55)
   verifiedFlag       Int?      @default(0) @db.SmallInt
   verifiedOn         DateTime? @db.Timestamp(6)
